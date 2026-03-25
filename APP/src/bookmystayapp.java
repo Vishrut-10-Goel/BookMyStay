@@ -1,88 +1,103 @@
+import java.util.*;
+import java.util.concurrent.*;
 
-import java.util.HashMap;
-import java.util.Map;
+class Reservation {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
 
-/**
- * Book My Stay Application - Use Case 3
- *
- * This program demonstrates centralized room inventory management
- * using a HashMap to ensure consistent and scalable state handling.
- *
- * @author YourName
- * @version 3.1
- */
-
-// Inventory class responsible for managing room availability
-class bookmystayapp {
-
-    // HashMap to store room type and availability
-    private Map<String, Integer> inventory;
-
-    // Constructor to initialize inventory
-    public bookmystayapp() {
-        inventory = new HashMap<>();
-
-        // Initial room availability
-        inventory.put("Single Room", 5);
-        inventory.put("Double Room", 3);
-        inventory.put("Suite Room", 2);
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    // Method to get availability of a specific room type
-    public int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
+    public String getReservationId() { return reservationId; }
+    public String getGuestName() { return guestName; }
+    public String getRoomType() { return roomType; }
+
+    @Override
+    public String toString() {
+        return "Reservation [ID=" + reservationId + ", Guest=" + guestName + ", RoomType=" + roomType + "]";
+    }
+}
+
+class InventoryService {
+    private Map<String, Integer> inventory = new HashMap<>();
+
+    public InventoryService() {
+        inventory.put("Deluxe", 3);
+        inventory.put("Standard", 2);
+        inventory.put("Suite", 1);
     }
 
-    // Method to update availability (increase/decrease)
-    public void updateAvailability(String roomType, int countChange) {
-        int current = inventory.getOrDefault(roomType, 0);
-        int updated = current + countChange;
-
-        if (updated >= 0) {
-            inventory.put(roomType, updated);
-        } else {
-            System.out.println("Invalid update! Not enough rooms available for " + roomType);
+    public synchronized boolean allocateRoom(String roomType) {
+        int count = inventory.getOrDefault(roomType, 0);
+        if (count > 0) {
+            inventory.put(roomType, count - 1);
+            return true;
         }
+        return false;
     }
 
-    // Method to display full inventory
-    public void displayInventory() {
-        System.out.println("Current Room Inventory:");
+    public synchronized void showInventory() {
+        System.out.println("\nCurrent Inventory:");
         for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue());
+            System.out.println(entry.getKey() + " -> " + entry.getValue());
         }
     }
 }
 
-// Main Application Class
-public class BookMyStayApp {
+class BookingProcessor implements Runnable {
+    private Queue<Reservation> bookingQueue;
+    private InventoryService inventory;
 
-    public static void main(String[] args) {
+    public BookingProcessor(Queue<Reservation> bookingQueue, InventoryService inventory) {
+        this.bookingQueue = bookingQueue;
+        this.inventory = inventory;
+    }
 
-        System.out.println("====================================");
-        System.out.println(" Book My Stay - Hotel Booking System");
-        System.out.println(" Version: v3.1");
-        System.out.println("====================================\n");
+    public void run() {
+        while (true) {
+            Reservation reservation;
+            synchronized (bookingQueue) {
+                reservation = bookingQueue.poll();
+            }
+            if (reservation == null) break;
+            boolean allocated = inventory.allocateRoom(reservation.getRoomType());
+            if (allocated) {
+                System.out.println("Booking confirmed: " + reservation);
+            } else {
+                System.out.println("Booking failed (No availability): " + reservation);
+            }
+        }
+    }
+}
 
-        // Initialize inventory
-        RoomInventory inventory = new RoomInventory();
+public class UseCase11ConcurrentBookingSimulation {
+    public static void main(String[] args) throws InterruptedException {
+        Queue<Reservation> bookingQueue = new LinkedList<>();
+        InventoryService inventory = new InventoryService();
 
-        // Display initial inventory
-        inventory.displayInventory();
+        bookingQueue.add(new Reservation("RES101", "Alice", "Deluxe"));
+        bookingQueue.add(new Reservation("RES102", "Bob", "Suite"));
+        bookingQueue.add(new Reservation("RES103", "Charlie", "Deluxe"));
+        bookingQueue.add(new Reservation("RES104", "David", "Standard"));
+        bookingQueue.add(new Reservation("RES105", "Eva", "Deluxe"));
+        bookingQueue.add(new Reservation("RES106", "Frank", "Standard"));
 
-        System.out.println("\n--- Updating Inventory ---");
+        int threadCount = 3;
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            Thread t = new Thread(new BookingProcessor(bookingQueue, inventory));
+            threads.add(t);
+            t.start();
+        }
 
-        // Simulate booking (reduce availability)
-        inventory.updateAvailability("Single Room", -1);
-        inventory.updateAvailability("Double Room", -2);
+        for (Thread t : threads) {
+            t.join();
+        }
 
-        // Simulate cancellation (increase availability)
-        inventory.updateAvailability("Suite Room", 1);
-
-        // Display updated inventory
-        System.out.println();
-        inventory.displayInventory();
-
-        System.out.println("\nThank you for using Book My Stay!");
+        inventory.showInventory();
     }
 }
