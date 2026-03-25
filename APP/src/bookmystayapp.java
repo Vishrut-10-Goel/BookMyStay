@@ -12,13 +12,13 @@ import java.util.Map;
  */
 
 // Inventory class responsible for managing room availability
-class RoomInventory {
+class bookmystayapp {
 
     // HashMap to store room type and availability
     private Map<String, Integer> inventory;
 
     // Constructor to initialize inventory
-    public RoomInventory() {
+    public bookmystayapp() {
         inventory = new HashMap<>();
 
         // Initial room availability
