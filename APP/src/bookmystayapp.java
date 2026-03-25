@@ -1,123 +1,87 @@
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-// Custom Exception for Invalid Booking
-class InvalidBookingException extends Exception {
-    public InvalidBookingException(String message) {
-        super(message);
-    }
-}
+/**
+ * Book My Stay Application - Use Case 3
+ *
+ * This program demonstrates centralized room inventory management
+ * using a HashMap to ensure consistent and scalable state handling.
+ *
+ * @author YourName
+ * @version 3.1
+ */
 
-// Reservation class
-class Reservation {
-    private String guestName;
-    private String roomType;
+// Inventory class responsible for managing room availability
+class RoomInventory {
 
-    public Reservation(String guestName, String roomType) {
-        this.guestName = guestName;
-        this.roomType = roomType;
-    }
+    // HashMap to store room type and availability
+    private Map<String, Integer> inventory;
 
-    public String getGuestName() {
-        return guestName;
-    }
+    // Constructor to initialize inventory
+    public RoomInventory() {
+        inventory = new HashMap<>();
 
-    public String getRoomType() {
-        return roomType;
-    }
-}
-
-// Inventory Service with validation
-class InventoryService {
-    private Map<String, Integer> inventory = new HashMap<>();
-
-    public InventoryService() {
-        inventory.put("Deluxe", 2);
-        inventory.put("Standard", 1);
-        inventory.put("Suite", 1);
+        // Initial room availability
+        inventory.put("Single Room", 5);
+        inventory.put("Double Room", 3);
+        inventory.put("Suite Room", 2);
     }
 
-    // Validate room type
-    public void validateRoomType(String roomType) throws InvalidBookingException {
-        if (!inventory.containsKey(roomType)) {
-            throw new InvalidBookingException("Invalid room type: " + roomType);
+    // Method to get availability of a specific room type
+    public int getAvailability(String roomType) {
+        return inventory.getOrDefault(roomType, 0);
+    }
+
+    // Method to update availability (increase/decrease)
+    public void updateAvailability(String roomType, int countChange) {
+        int current = inventory.getOrDefault(roomType, 0);
+        int updated = current + countChange;
+
+        if (updated >= 0) {
+            inventory.put(roomType, updated);
+        } else {
+            System.out.println("Invalid update! Not enough rooms available for " + roomType);
         }
     }
 
-    // Check availability
-    public void validateAvailability(String roomType) throws InvalidBookingException {
-        if (inventory.get(roomType) <= 0) {
-            throw new InvalidBookingException("No rooms available for: " + roomType);
-        }
-    }
-
-    // Safe decrement
-    public void decrement(String roomType) throws InvalidBookingException {
-        int count = inventory.get(roomType);
-
-        if (count <= 0) {
-            throw new InvalidBookingException("Cannot decrement. Inventory already zero for: " + roomType);
-        }
-
-        inventory.put(roomType, count - 1);
-    }
-
-    public void showInventory() {
-        System.out.println("\nCurrent Inventory:");
+    // Method to display full inventory
+    public void displayInventory() {
+        System.out.println("Current Room Inventory:");
         for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
+            System.out.println(entry.getKey() + " : " + entry.getValue());
         }
     }
 }
 
-// Booking Service with validation
-class BookingService {
-    private InventoryService inventory;
+// Main Application Class
+public class BookMyStayApp {
 
-    public BookingService(InventoryService inventory) {
-        this.inventory = inventory;
-    }
-
-    public void processBooking(Reservation reservation) {
-        try {
-            System.out.println("\nProcessing booking for: " + reservation.getGuestName());
-
-            // Fail-fast validations
-            inventory.validateRoomType(reservation.getRoomType());
-            inventory.validateAvailability(reservation.getRoomType());
-
-            // Allocate (only if valid)
-            inventory.decrement(reservation.getRoomType());
-
-            System.out.println("Booking confirmed for " + reservation.getGuestName() +
-                    " (Room: " + reservation.getRoomType() + ")");
-
-        } catch (InvalidBookingException e) {
-            // Graceful failure handling
-            System.out.println("Booking failed: " + e.getMessage());
-        }
-    }
-}
-
-// Main class
-public class UseCase9ErrorHandlingValidation {
     public static void main(String[] args) {
 
-        InventoryService inventory = new InventoryService();
-        BookingService bookingService = new BookingService(inventory);
+        System.out.println("====================================");
+        System.out.println(" Book My Stay - Hotel Booking System");
+        System.out.println(" Version: v3.1");
+        System.out.println("====================================\n");
 
-        // Valid booking
-        bookingService.processBooking(new Reservation("Alice", "Deluxe"));
+        // Initialize inventory
+        RoomInventory inventory = new RoomInventory();
 
-        // Invalid room type
-        bookingService.processBooking(new Reservation("Bob", "Premium"));
+        // Display initial inventory
+        inventory.displayInventory();
 
-        // Valid booking
-        bookingService.processBooking(new Reservation("Charlie", "Suite"));
+        System.out.println("\n--- Updating Inventory ---");
 
-        // Exceed inventory
-        bookingService.processBooking(new Reservation("David", "Suite"));
+        // Simulate booking (reduce availability)
+        inventory.updateAvailability("Single Room", -1);
+        inventory.updateAvailability("Double Room", -2);
 
-        // Show final inventory
-        inventory.showInventory();
+        // Simulate cancellation (increase availability)
+        inventory.updateAvailability("Suite Room", 1);
+
+        // Display updated inventory
+        System.out.println();
+        inventory.displayInventory();
+
+        System.out.println("\nThank you for using Book My Stay!");
     }
 }
